@@ -1,4 +1,5 @@
-﻿using EduGate.Domain.Entities;
+﻿using Domain.Entities;
+using EduGate.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -27,6 +28,7 @@ namespace Infrastructure.Persistence
         public DbSet<Semester> Semesters => Set<Semester>();
         public DbSet<Section> Sections => Set<Section>();
         public DbSet<Enrollment> Enrollments => Set<Enrollment>();
+        public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             if (!optionsBuilder.IsConfigured)
@@ -34,6 +36,7 @@ namespace Infrastructure.Persistence
                 optionsBuilder.UseNpgsql("Host=localhost; Port=5432; Database=EduGateDb; Username=postgres; Password=mysecretpassword");
             }
         }
+    
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

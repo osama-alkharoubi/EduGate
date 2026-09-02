@@ -1,3 +1,5 @@
+using Domain.Entities;
+
 namespace EduGate.Domain.Entities;
 
 public class User
@@ -12,6 +14,7 @@ public class User
     public string PhoneNumber { get; set; } = string.Empty;
 
     public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
     public Student? Student { get; set; }
     public Professor? Professor { get; set; }
 }
