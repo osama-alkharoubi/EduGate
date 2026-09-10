@@ -30,9 +30,9 @@ namespace Infrastructure.Repositories
             _context.Users.Add(user);
            
         }
-        public async Task<bool> ExistsByEmailOrUserNameAsync(string email="", string userName="", CancellationToken cancellationToken = default)
+        public async Task<bool> ExistsByEmailAsync(string email="",  CancellationToken cancellationToken = default)
         {
-            return await _context.Users.AnyAsync(u => u.Email == email || u.UserName == userName);
+            return await _context.Users.AnyAsync(u => u.Email == email);
         }
         public async Task<UserAuthDto?> GetForAuthByEmailAsync(string email, CancellationToken cancellationToken = default)
         {

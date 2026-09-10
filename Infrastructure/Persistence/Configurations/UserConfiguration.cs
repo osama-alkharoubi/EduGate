@@ -16,6 +16,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(100);
 
         builder.HasQueryFilter(u => u.IsActive);
+        builder.Property(u => u.IsActive)
+            .HasDefaultValue(true);
+
         builder.Property(u => u.FirstName)
             .IsRequired()
             .HasMaxLength(100);
@@ -35,7 +38,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder
     .HasIndex(u => u.Email)
     .IsUnique();
-
+        builder.HasIndex(u => u.UserName);
         builder.Property(u => u.PhoneNumber)
             .HasMaxLength(20)
             .IsRequired(false);

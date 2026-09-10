@@ -14,6 +14,9 @@ public class DepartmentConfiguration : IEntityTypeConfiguration<Department>
             .IsRequired()
             .HasMaxLength(100);
 
+        builder.HasIndex(d => new { d.CollegeId, d.DepartmentName })
+            .IsUnique();
+
         builder.HasOne(d => d.College)
             .WithMany(c => c.Departments)
             .HasForeignKey(d => d.CollegeId)

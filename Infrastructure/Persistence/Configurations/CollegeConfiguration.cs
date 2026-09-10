@@ -14,6 +14,9 @@ public class CollegeConfiguration : IEntityTypeConfiguration<College>
             .IsRequired()
             .HasMaxLength(100);
 
+        builder.HasIndex(c => c.CollegeName)
+            .IsUnique();
+
         builder.HasOne(c => c.Dean)
             .WithMany()
             .HasForeignKey(c => c.DeanId)

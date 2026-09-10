@@ -15,7 +15,7 @@ public class StudentConfiguration : IEntityTypeConfiguration<Student>
             .HasMaxLength(20);
         builder.HasIndex(s => s.UniversityNumber).IsUnique();
         builder.Property(s => s.GPA)
-            .HasColumnType("decimal(5,2)");
+            .HasPrecision(5, 2);
 
         builder.HasOne(s => s.User)
             .WithOne(u => u.Student)
@@ -26,5 +26,12 @@ public class StudentConfiguration : IEntityTypeConfiguration<Student>
             .WithMany(sp => sp.Students)
             .HasForeignKey(s => s.SpecializationId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.ToTable(t =>
+        {
+            t.HasCheckConstraint("CK_Students_GPA_Range", "\"GPA\" BETWEEN 0 AND 100");
+            t.HasCheckConstraint("CK_Students_AcademicStatus_Valid", "\"AcademicStatus\" BETWEEN 1 AND 4");
+            t.HasCheckConstraint("CK_Students_CompletedCredits_NonNegative", "\"CompletedCredits\" >= 0");
+        });
     }
 }

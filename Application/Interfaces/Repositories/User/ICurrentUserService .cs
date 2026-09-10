@@ -10,8 +10,10 @@ namespace Application.Interfaces.Repositories.User
 
         string? Email { get; }
 
-        string? Role { get; }
+        IEnumerable<string> Roles { get; }
 
         bool IsAuthenticated { get; }
+        string? GetClaimValue(string claimType);
+        Guid? GetClaimAsGuid(string claimType);
     }
 }

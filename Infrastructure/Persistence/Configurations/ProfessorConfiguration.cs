@@ -18,6 +18,10 @@ public class ProfessorConfiguration : IEntityTypeConfiguration<Professor>
             .WithOne(u => u.Professor)
             .HasForeignKey<Professor>(p => p.UserId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.ToTable(t => t.HasCheckConstraint(
+            "CK_Professors_AcademicRank_Valid",
+            "\"AcademicRank\" BETWEEN 1 AND 4"));
             
  
     }

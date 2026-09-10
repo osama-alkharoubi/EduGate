@@ -1,4 +1,5 @@
-﻿using EduGate.Domain.Entities;
+﻿using Application.DTOs.Auth;
+using EduGate.Domain.Entities;
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -7,6 +8,8 @@ namespace Application.Interfaces.Auth
 {
     public interface IJwtProvider
     {
-        string GenerateToken(User user);
+        Task<string> GenerateTokenAsync(UserAuthDto user);
+        string GenerateRefreshToken();
+        Task<Guid?> GetUserIdFromExpiredTokenAsync(string accessToken);
     }
 }

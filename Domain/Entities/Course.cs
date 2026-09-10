@@ -7,7 +7,7 @@ public class Course
     public string CourseName { get; set; } = string.Empty;
     public int CreditHours { get; set; }
     public Guid DepartmentId { get; set; }
-
+    public bool IsActive { get; set; } = true;
     public Department Department { get; set; } = null!;
     public ICollection<Section> Sections { get; set; } = new List<Section>();
     public ICollection<SpecializationCourse> SpecializationCourses { get; set; } = new List<SpecializationCourse>();

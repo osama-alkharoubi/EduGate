@@ -35,7 +35,12 @@ public class SectionConfiguration : IEntityTypeConfiguration<Section>
             .WithMany(p => p.Sections)
             .HasForeignKey(s => s.ProfessorId)
             .OnDelete(DeleteBehavior.Restrict);
-         
-   
+
+        builder.ToTable(t =>
+        {
+            t.HasCheckConstraint("CK_Sections_SectionNumber_Positive", "\"SectionNumber\" > 0");
+            t.HasCheckConstraint("CK_Sections_Capacity_Positive", "\"Capacity\" > 0");
+            t.HasCheckConstraint("CK_Sections_EndTime_After_StartTime", "\"EndTime\" > \"StartTime\"");
+        });
     }
 }

@@ -14,8 +14,11 @@ public class RoleConfiguration : IEntityTypeConfiguration<Role>
             .IsRequired()
             .HasMaxLength(50); // Mapped from your diagram constraints
 
+        builder.HasIndex(r => r.RoleName)
+            .IsUnique();
+
         builder.Property(r => r.Description)
-            .HasMaxLength(250) // Mapped from your diagram constraints
+            .HasMaxLength(255)
             .IsRequired(false);
     }
 }

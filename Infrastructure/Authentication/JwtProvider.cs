@@ -1,30 +1,58 @@
-﻿using Application.Interfaces.Auth;
-using EduGate.Domain.Entities;
+﻿using Application.DTOs.Auth;
+using Application.Interfaces.Auth;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
-
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
+
 namespace Infrastructure.Authentication
 {
-    public class JwtProvider:IJwtProvider
+    public class JwtProvider : IJwtProvider
     {
-        private readonly IConfiguration _configuration;
-        public JwtProvider(IConfiguration configuration)
+        private readonly string _issuer;
+        private readonly string _audience;
+        private readonly int _expiryMinutes;
+        private readonly SymmetricSecurityKey _securityKey;
+        private readonly SigningCredentials _signingCredentials;
+        private readonly JsonWebTokenHandler _tokenHandler;
+        private readonly IEnumerable<IRoleClaimProvider> _roleClaimProviders;
+
+        public JwtProvider(
+            IConfiguration configuration,
+            IEnumerable<IRoleClaimProvider> roleClaimProviders)
         {
-            _configuration = configuration;
+            _roleClaimProviders = roleClaimProviders;
+
+            var jwtSection = configuration.GetSection("JwtSettings");
+
+            var secretKey = jwtSection["Secret"];
+            if (string.IsNullOrEmpty(secretKey))
+            {
+                throw new InvalidOperationException("JWT Secret is missing from configuration.");
+            }
+
+            _issuer = jwtSection["Issuer"] ?? throw new InvalidOperationException("JWT Issuer is missing.");
+            _audience = jwtSection["Audience"] ?? throw new InvalidOperationException("JWT Audience is missing.");
+
+            _expiryMinutes = int.TryParse(jwtSection["ExpiryMinutes"], out var minutes) ? minutes : 60;
+
+            _securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
+            _signingCredentials = new SigningCredentials(_securityKey, SecurityAlgorithms.HmacSha256);
+            _tokenHandler = new JsonWebTokenHandler();
         }
-        public string GenerateToken(User user)
+
+        public string GenerateRefreshToken()
         {
-            var secretKey = _configuration["Jwt:Secret"];
-            var issuer = _configuration["Jwt:Issuer"];
-            var audience = _configuration["Jwt:Audience"];
+            var randomNumber = new byte[32];
+            using var rng = RandomNumberGenerator.Create();
+            rng.GetBytes(randomNumber);
+            return Convert.ToBase64String(randomNumber);
+        }
 
-            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!));
-            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
-
-            // 1. استخدام List بدلاً من Array لدعم الإضافة الديناميكية
+        public async Task<string> GenerateTokenAsync(UserAuthDto user)
+        {
             var claims = new List<Claim>
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.UserId.ToString()),
@@ -32,27 +60,70 @@ namespace Infrastructure.Authentication
                 new Claim(JwtRegisteredClaimNames.Name, user.UserName)
             };
 
-            // 2. فحص وإضافة الرتب إن وجدت
-            if (user.UserRoles != null)
+            if (user.Roles != null && user.Roles.Count > 0)
             {
-                foreach (var userRole in user.UserRoles)
+                foreach (var role in user.Roles)
                 {
-                    // تأكد أن الكيان Role يحتوي على خاصية Name أو غيرها حسب تصميمك
-                    claims.Add(new Claim(ClaimTypes.Role, userRole.Role.RoleName));
+                    claims.Add(new Claim(ClaimTypes.Role, role));
+
+                    // البحث عن المزود المطابق للدور الحالي دون if/else
+                    var provider = _roleClaimProviders.FirstOrDefault(p => p.TargetRole == role);
+                    if (provider != null)
+                    {
+                        var roleClaim = await provider.GetRoleClaimAsync(user.UserId);
+                        claims.Add(roleClaim);
+                    }
                 }
             }
 
             var descriptor = new SecurityTokenDescriptor
             {
-                Issuer = issuer,
-                Audience = audience,
+                Issuer = _issuer,
+                Audience = _audience,
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddHours(2),
-                SigningCredentials = credentials
+                Expires = DateTime.UtcNow.AddMinutes(_expiryMinutes),
+                SigningCredentials = _signingCredentials
             };
 
-            var handler = new JsonWebTokenHandler();
-            return handler.CreateToken(descriptor);
+            return _tokenHandler.CreateToken(descriptor);
+        }
+
+        public async Task<Guid?> GetUserIdFromExpiredTokenAsync(string accessToken)
+        {
+            if (string.IsNullOrWhiteSpace(accessToken))
+                return null;
+
+            var tokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateAudience = false,
+                ValidateIssuer = false,
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = _securityKey,
+                ValidateLifetime = false
+            };
+
+            if (!_tokenHandler.CanReadToken(accessToken))
+            {
+                return null;
+            }
+
+            var validationResult = await _tokenHandler.ValidateTokenAsync(accessToken, tokenValidationParameters);
+
+            if (!validationResult.IsValid)
+            {
+                return null;
+            }
+
+            if (validationResult.SecurityToken is not JsonWebToken jsonWebToken ||
+                !jsonWebToken.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase))
+            {
+                return null;
+            }
+
+            var userIdClaim = validationResult.ClaimsIdentity.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+                           ?? validationResult.ClaimsIdentity.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            return Guid.TryParse(userIdClaim, out var userId) ? userId : null;
         }
     }
 }

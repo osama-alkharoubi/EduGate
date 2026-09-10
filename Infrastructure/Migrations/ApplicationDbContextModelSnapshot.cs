@@ -29,13 +29,17 @@ namespace Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedOnUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
                     b.Property<DateTime>("ExpiresOnUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsRevoked")
-                        .HasColumnType("boolean");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("Token")
                         .IsRequired()
@@ -52,7 +56,10 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("RefreshTokens");
+                    b.ToTable("RefreshTokens", t =>
+                        {
+                            t.HasCheckConstraint("CK_RefreshTokens_ExpiresAfterCreated", "\"ExpiresOnUtc\" > \"CreatedOnUtc\"");
+                        });
                 });
 
             modelBuilder.Entity("EduGate.Domain.Entities.College", b =>
@@ -70,6 +77,9 @@ namespace Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("CollegeId");
+
+                    b.HasIndex("CollegeName")
+                        .IsUnique();
 
                     b.HasIndex("DeanId");
 
@@ -98,11 +108,22 @@ namespace Infrastructure.Migrations
                     b.Property<Guid>("DepartmentId")
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
                     b.HasKey("CourseId");
+
+                    b.HasIndex("CourseCode")
+                        .IsUnique();
 
                     b.HasIndex("DepartmentId");
 
-                    b.ToTable("Courses");
+                    b.ToTable("Courses", t =>
+                        {
+                            t.HasCheckConstraint("CK_Courses_CreditHours_Positive", "\"CreditHours\" > 0 AND \"CreditHours\" <= 12");
+                        });
                 });
 
             modelBuilder.Entity("EduGate.Domain.Entities.CoursePrerequisite", b =>
@@ -117,7 +138,10 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("PrerequisiteId");
 
-                    b.ToTable("CoursePrerequisites");
+                    b.ToTable("CoursePrerequisites", t =>
+                        {
+                            t.HasCheckConstraint("CK_CoursePrerequisites_DifferentCourses", "\"CourseId\" <> \"PrerequisiteId\"");
+                        });
                 });
 
             modelBuilder.Entity("EduGate.Domain.Entities.Department", b =>
@@ -139,9 +163,10 @@ namespace Infrastructure.Migrations
 
                     b.HasKey("DepartmentId");
 
-                    b.HasIndex("CollegeId");
-
                     b.HasIndex("HeadOfDepartmentId");
+
+                    b.HasIndex("CollegeId", "DepartmentName")
+                        .IsUnique();
 
                     b.ToTable("Departments");
                 });
@@ -153,13 +178,16 @@ namespace Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<decimal?>("Grade")
-                        .HasColumnType("decimal(4,2)");
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)");
 
                     b.Property<Guid>("SectionId")
                         .HasColumnType("uuid");
 
                     b.Property<short>("Status")
-                        .HasColumnType("smallint");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("smallint")
+                        .HasDefaultValue((short)1);
 
                     b.Property<Guid>("StudentId")
                         .HasColumnType("uuid");
@@ -168,9 +196,15 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("SectionId");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("StudentId", "SectionId")
+                        .IsUnique();
 
-                    b.ToTable("Enrollments");
+                    b.ToTable("Enrollments", t =>
+                        {
+                            t.HasCheckConstraint("CK_Enrollments_Grade_Range", "\"Grade\" IS NULL OR (\"Grade\" >= 0 AND \"Grade\" <= 100)");
+
+                            t.HasCheckConstraint("CK_Enrollments_Status_Valid", "\"Status\" BETWEEN 1 AND 5");
+                        });
                 });
 
             modelBuilder.Entity("EduGate.Domain.Entities.Professor", b =>
@@ -198,7 +232,10 @@ namespace Infrastructure.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("Professors");
+                    b.ToTable("Professors", t =>
+                        {
+                            t.HasCheckConstraint("CK_Professors_AcademicRank_Valid", "\"AcademicRank\" BETWEEN 1 AND 4");
+                        });
                 });
 
             modelBuilder.Entity("EduGate.Domain.Entities.Role", b =>
@@ -208,8 +245,9 @@ namespace Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("Description")
-                        .HasMaxLength(250)
-                        .HasColumnType("character varying(250)");
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
 
                     b.Property<string>("RoleName")
                         .IsRequired()
@@ -218,7 +256,30 @@ namespace Infrastructure.Migrations
 
                     b.HasKey("RoleId");
 
+                    b.HasIndex("RoleName")
+                        .IsUnique();
+
                     b.ToTable("Roles");
+
+                    b.HasData(
+                        new
+                        {
+                            RoleId = new Guid("11111111-1111-1111-1111-111111111111"),
+                            Description = "",
+                            RoleName = "Admin"
+                        },
+                        new
+                        {
+                            RoleId = new Guid("22222222-2222-2222-2222-222222222222"),
+                            Description = "",
+                            RoleName = "Student"
+                        },
+                        new
+                        {
+                            RoleId = new Guid("33333333-3333-3333-3333-333333333333"),
+                            Description = "",
+                            RoleName = "Professor"
+                        });
                 });
 
             modelBuilder.Entity("EduGate.Domain.Entities.Section", b =>
@@ -267,7 +328,14 @@ namespace Infrastructure.Migrations
                     b.HasIndex("CourseId", "SemesterId", "SectionNumber")
                         .IsUnique();
 
-                    b.ToTable("Sections");
+                    b.ToTable("Sections", t =>
+                        {
+                            t.HasCheckConstraint("CK_Sections_Capacity_Positive", "\"Capacity\" > 0");
+
+                            t.HasCheckConstraint("CK_Sections_EndTime_After_StartTime", "\"EndTime\" > \"StartTime\"");
+
+                            t.HasCheckConstraint("CK_Sections_SectionNumber_Positive", "\"SectionNumber\" > 0");
+                        });
                 });
 
             modelBuilder.Entity("EduGate.Domain.Entities.Semester", b =>
@@ -280,7 +348,9 @@ namespace Infrastructure.Migrations
                         .HasColumnType("date");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("SemesterCode")
                         .IsRequired()
@@ -300,7 +370,10 @@ namespace Infrastructure.Migrations
                     b.HasIndex("SemesterCode")
                         .IsUnique();
 
-                    b.ToTable("Semesters");
+                    b.ToTable("Semesters", t =>
+                        {
+                            t.HasCheckConstraint("CK_Semesters_EndDate_After_StartDate", "\"EndDate\" > \"StartDate\"");
+                        });
                 });
 
             modelBuilder.Entity("EduGate.Domain.Entities.Specialization", b =>
@@ -309,8 +382,16 @@ namespace Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<int>("Code")
+                        .HasColumnType("integer");
+
                     b.Property<Guid>("DepartmentId")
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("IsActive")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
 
                     b.Property<string>("SpecializationName")
                         .IsRequired()
@@ -322,9 +403,18 @@ namespace Infrastructure.Migrations
 
                     b.HasKey("SpecializationId");
 
-                    b.HasIndex("DepartmentId");
+                    b.HasIndex("Code")
+                        .IsUnique();
 
-                    b.ToTable("Specializations");
+                    b.HasIndex("DepartmentId", "SpecializationName")
+                        .IsUnique();
+
+                    b.ToTable("Specializations", t =>
+                        {
+                            t.HasCheckConstraint("CK_Specializations_Code_Range", "\"Code\" BETWEEN 1 AND 999");
+
+                            t.HasCheckConstraint("CK_Specializations_TotalCredits_Range", "\"TotalCredits\" BETWEEN 60 AND 250");
+                        });
                 });
 
             modelBuilder.Entity("EduGate.Domain.Entities.SpecializationCourse", b =>
@@ -355,7 +445,14 @@ namespace Infrastructure.Migrations
                     b.HasIndex("SpecializationId", "CourseId")
                         .IsUnique();
 
-                    b.ToTable("SpecializationCourses");
+                    b.ToTable("SpecializationCourses", t =>
+                        {
+                            t.HasCheckConstraint("CK_SpecializationCourses_RequirementType_Valid", "\"RequirementType\" BETWEEN 1 AND 4");
+
+                            t.HasCheckConstraint("CK_SpecializationCourses_SuggestedSemester_Range", "\"SuggestedSemester\" BETWEEN 1 AND 2");
+
+                            t.HasCheckConstraint("CK_SpecializationCourses_SuggestedYear_Positive", "\"SuggestedYear\" > 0");
+                        });
                 });
 
             modelBuilder.Entity("EduGate.Domain.Entities.Student", b =>
@@ -374,7 +471,8 @@ namespace Infrastructure.Migrations
                         .HasColumnType("date");
 
                     b.Property<decimal>("GPA")
-                        .HasColumnType("decimal(5,2)");
+                        .HasPrecision(3, 2)
+                        .HasColumnType("numeric(3,2)");
 
                     b.Property<Guid>("SpecializationId")
                         .HasColumnType("uuid");
@@ -397,7 +495,14 @@ namespace Infrastructure.Migrations
                     b.HasIndex("UserId")
                         .IsUnique();
 
-                    b.ToTable("Students");
+                    b.ToTable("Students", t =>
+                        {
+                            t.HasCheckConstraint("CK_Students_AcademicStatus_Valid", "\"AcademicStatus\" BETWEEN 1 AND 4");
+
+                            t.HasCheckConstraint("CK_Students_CompletedCredits_NonNegative", "\"CompletedCredits\" >= 0");
+
+                            t.HasCheckConstraint("CK_Students_GPA_Range", "\"GPA\" BETWEEN 0 AND 4");
+                        });
                 });
 
             modelBuilder.Entity("EduGate.Domain.Entities.User", b =>
@@ -422,7 +527,9 @@ namespace Infrastructure.Migrations
                         .HasColumnType("character varying(500)");
 
                     b.Property<bool>("IsActive")
-                        .HasColumnType("boolean");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
 
                     b.Property<string>("LastName")
                         .IsRequired()
@@ -443,7 +550,22 @@ namespace Infrastructure.Migrations
                     b.HasIndex("Email")
                         .IsUnique();
 
+                    b.HasIndex("UserName");
+
                     b.ToTable("Users");
+
+                    b.HasData(
+                        new
+                        {
+                            UserId = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                            Email = "admin@edugate.com",
+                            FirstName = "System",
+                            HashPassword = "$2a$11$0H5A9efIwT9HTz0AOWYaGOVJfE7tJGG3/XJHtqgwfz/OJs4ulwPae",
+                            IsActive = true,
+                            LastName = "Administrator",
+                            PhoneNumber = "0790000000",
+                            UserName = "admin"
+                        });
                 });
 
             modelBuilder.Entity("EduGate.Domain.Entities.UserRole", b =>
@@ -459,6 +581,13 @@ namespace Infrastructure.Migrations
                     b.HasIndex("RoleId");
 
                     b.ToTable("UserRoles");
+
+                    b.HasData(
+                        new
+                        {
+                            UserId = new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
+                            RoleId = new Guid("11111111-1111-1111-1111-111111111111")
+                        });
                 });
 
             modelBuilder.Entity("Domain.Entities.RefreshToken", b =>

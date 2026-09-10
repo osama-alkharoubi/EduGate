@@ -22,12 +22,20 @@ namespace Infrastructure.Persistence.Configurations
                 .IsRequired();
             builder.Property(rt => rt.IsRevoked)
                 .IsRequired();
+            builder.Property(rt => rt.IsRevoked)
+                .HasDefaultValue(false);
             builder.Property(rt => rt.CreatedOnUtc)
                 .IsRequired();
+            builder.Property(rt => rt.CreatedOnUtc)
+                .HasDefaultValueSql("CURRENT_TIMESTAMP");
             builder.HasOne(rt => rt.User)
                 .WithMany(u => u.RefreshTokens)
                 .HasForeignKey(rt => rt.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.ToTable(t => t.HasCheckConstraint(
+                "CK_RefreshTokens_ExpiresAfterCreated",
+                "\"ExpiresOnUtc\" > \"CreatedOnUtc\""));
         }
     }
 }

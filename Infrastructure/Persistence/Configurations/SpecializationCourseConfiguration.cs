@@ -20,7 +20,14 @@ public class SpecializationCourseConfiguration : IEntityTypeConfiguration<Specia
             .HasForeignKey(sc => sc.CourseId)
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(sc => new { sc.SpecializationId, sc.CourseId })
-        .IsUnique();
+            .IsUnique();
+
+        builder.ToTable(t =>
+        {
+          
+            t.HasCheckConstraint("CK_SpecializationCourses_SuggestedYear_Positive", "\"SuggestedYear\" > 0");
+            t.HasCheckConstraint("CK_SpecializationCourses_SuggestedSemester_Range", "\"SuggestedSemester\" BETWEEN 1 AND 3");
+        });
 
     }
 }

@@ -19,5 +19,9 @@ public class CoursePrerequisiteConfiguration : IEntityTypeConfiguration<CoursePr
             .WithMany(c => c.PrerequisiteFor)
             .HasForeignKey(cp => cp.PrerequisiteId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.ToTable(t => t.HasCheckConstraint(
+            "CK_CoursePrerequisites_DifferentCourses",
+            "\"CourseId\" <> \"PrerequisiteId\""));
     }
 }
