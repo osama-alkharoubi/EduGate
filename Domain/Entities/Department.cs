@@ -1,6 +1,8 @@
+using Domain.Entities;
+
 namespace EduGate.Domain.Entities;
 
-public class Department
+public class Department : BaseAuditableEntity
 {
     public Guid DepartmentId { get; set; }
     public string DepartmentName { get; set; } = string.Empty;

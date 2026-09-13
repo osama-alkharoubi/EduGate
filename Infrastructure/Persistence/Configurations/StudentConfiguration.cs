@@ -17,6 +17,17 @@ public class StudentConfiguration : IEntityTypeConfiguration<Student>
         builder.Property(s => s.GPA)
             .HasPrecision(5, 2);
 
+        builder.Property(s => s.IsGraduating)
+    .IsRequired()
+    .HasDefaultValue(false);
+        builder.Property(s => s.HasFinancialHolding)
+            .IsRequired()
+            .HasDefaultValue(false);
+
+        builder.Property(s => s.HasAcademicWarning)
+            .IsRequired()
+            .HasDefaultValue(false);
+
         builder.HasOne(s => s.User)
             .WithOne(u => u.Student)
             .HasForeignKey<Student>(s => s.UserId)

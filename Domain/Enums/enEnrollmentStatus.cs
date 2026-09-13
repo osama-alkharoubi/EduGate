@@ -6,5 +6,6 @@ public enum enEnrollmentStatus : short
     Dropped = 2,
     Withdrawn = 3,
     Completed = 4,
-    Failed = 5
+    Failed = 5,
+        Incomplete = 6
 }

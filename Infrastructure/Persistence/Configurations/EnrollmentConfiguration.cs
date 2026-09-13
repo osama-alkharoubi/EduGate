@@ -16,7 +16,8 @@ public class EnrollmentConfiguration : IEntityTypeConfiguration<Enrollment>
             .IsRequired(false);
 
         builder.HasIndex(e => new { e.StudentId, e.SectionId })
-            .IsUnique();
+         .IsUnique()
+         .HasFilter("\"Status\" = 1");
 
         builder.Property(e => e.Status)
             .HasDefaultValue(enEnrollmentStatus.Enrolled);
@@ -34,7 +35,7 @@ public class EnrollmentConfiguration : IEntityTypeConfiguration<Enrollment>
         builder.ToTable(t =>
         {
             t.HasCheckConstraint("CK_Enrollments_Grade_Range", "\"Grade\" IS NULL OR (\"Grade\" >= 0 AND \"Grade\" <= 100)");
-            t.HasCheckConstraint("CK_Enrollments_Status_Valid", "\"Status\" BETWEEN 1 AND 5");
+            t.HasCheckConstraint("CK_Enrollments_Status_Valid", "\"Status\" BETWEEN 1 AND 6");
         });
     }
 }

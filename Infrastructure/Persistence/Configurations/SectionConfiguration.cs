@@ -1,3 +1,4 @@
+using Domain.Enums;
 using EduGate.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -36,11 +37,18 @@ public class SectionConfiguration : IEntityTypeConfiguration<Section>
             .HasForeignKey(s => s.ProfessorId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        var validStatusValues = string.Join(", ", Enum.GetValues<enSectionStatus>().Cast<short>());
+
+   
         builder.ToTable(t =>
         {
             t.HasCheckConstraint("CK_Sections_SectionNumber_Positive", "\"SectionNumber\" > 0");
             t.HasCheckConstraint("CK_Sections_Capacity_Positive", "\"Capacity\" > 0");
             t.HasCheckConstraint("CK_Sections_EndTime_After_StartTime", "\"EndTime\" > \"StartTime\"");
+            t.HasCheckConstraint(
+             "CK_Sections_Status",
+             $"\"Status\" IN ({validStatusValues})"
+         );
         });
     }
 }

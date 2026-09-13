@@ -1,6 +1,8 @@
+using Domain.Entities;
+
 namespace EduGate.Domain.Entities;
 
-public class Semester
+public class Semester : BaseAuditableEntity
 {
     public Guid SemesterId { get; set; }
     public string SemesterName { get; set; } = string.Empty;

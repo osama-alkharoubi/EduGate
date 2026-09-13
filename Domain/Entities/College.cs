@@ -1,6 +1,8 @@
+using Domain.Entities;
+
 namespace EduGate.Domain.Entities;
 
-public class College
+public class College : BaseAuditableEntity
 {
     public Guid CollegeId { get; set; }
     public string CollegeName { get; set; } = string.Empty;

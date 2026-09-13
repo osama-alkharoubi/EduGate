@@ -1,8 +1,9 @@
+using Domain.Entities;
 using Domain.Enums;
 
 namespace EduGate.Domain.Entities;
 
-public class Professor
+public class Professor : BaseAuditableEntity
 {
     public Guid ProfessorId { get; set; }
     public DateOnly HireDate { get; set; }

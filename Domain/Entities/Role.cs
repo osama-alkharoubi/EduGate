@@ -1,6 +1,8 @@
+using Domain.Entities;
+
 namespace EduGate.Domain.Entities;
 
-public class Role
+public class Role : BaseAuditableEntity
 {
     public Guid RoleId { get; set; }
     public string RoleName { get; set; } = string.Empty;

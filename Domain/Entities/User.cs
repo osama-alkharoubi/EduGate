@@ -2,7 +2,7 @@ using Domain.Entities;
 
 namespace EduGate.Domain.Entities;
 
-public class User
+public class User : BaseAuditableEntity
 {
     public Guid UserId { get; set; }
     public string UserName { get; set; } = string.Empty;

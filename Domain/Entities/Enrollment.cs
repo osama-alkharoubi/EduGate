@@ -1,8 +1,9 @@
+using Domain.Entities;
 using Domain.Enums;
 
 namespace EduGate.Domain.Entities;
 
-public class Enrollment
+public class Enrollment : BaseAuditableEntity
 {
     public Guid EnrollmentId { get; set; }
     public Guid StudentId { get; set; }

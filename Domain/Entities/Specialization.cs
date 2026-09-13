@@ -1,6 +1,8 @@
+using Domain.Entities;
+
 namespace EduGate.Domain.Entities;
 
-public class Specialization
+public class Specialization : BaseAuditableEntity
 {
     public Guid SpecializationId { get; set; }
     public string SpecializationName { get; set; } = string.Empty;

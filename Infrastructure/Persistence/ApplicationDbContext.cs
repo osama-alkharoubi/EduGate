@@ -1,4 +1,5 @@
-﻿using Domain.Entities;
+﻿using Application.Interfaces.Repositories.User;
+using Domain.Entities;
 using EduGate.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using System;
@@ -9,9 +10,11 @@ namespace Infrastructure.Persistence
 {
     public class ApplicationDbContext: DbContext
     {
-        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
+        private readonly ICurrentUserService _currentUserService;
+        public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options, ICurrentUserService currentUserService)
             : base(options)
         {
+            _currentUserService = currentUserService;
         }
 
         public DbSet<User> Users => Set<User>();
@@ -23,6 +26,7 @@ namespace Infrastructure.Persistence
         public DbSet<Professor> Professors => Set<Professor>();
         public DbSet<Student> Students => Set<Student>();
         public DbSet<Course> Courses => Set<Course>();
+        public DbSet<UniversitySetting> UniversitySettings => Set<UniversitySetting>();
         public DbSet<CoursePrerequisite> CoursePrerequisites => Set<CoursePrerequisite>();
         public DbSet<SpecializationCourse> SpecializationCourses => Set<SpecializationCourse>();
         public DbSet<Semester> Semesters => Set<Semester>();
@@ -79,5 +83,41 @@ namespace Infrastructure.Persistence
             );
          
         }
-    }
+        public override int SaveChanges()
+        {
+            ApplyAuditInfo();
+            return base.SaveChanges();
+        }
+        public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            ApplyAuditInfo();
+
+            return await base.SaveChangesAsync(cancellationToken);
+        }
+        private void ApplyAuditInfo()
+        {
+            var currentUserId = _currentUserService.UserId;
+            var currentTime = DateTime.UtcNow;
+
+            foreach (var entry in ChangeTracker.Entries<BaseAuditableEntity>())
+            {
+                switch (entry.State)
+                {
+                    case EntityState.Added:
+                        entry.Entity.CreatedAt = currentTime;
+                        entry.Entity.CreatedBy = currentUserId;
+                        break;
+
+                    case EntityState.Modified:
+                        // حماية بيانات الإنشاء الأصلية من أن تُحذف أو تتصفر
+                        entry.Property(x => x.CreatedAt).IsModified = false;
+                        entry.Property(x => x.CreatedBy).IsModified = false;
+
+                        entry.Entity.UpdatedAt = currentTime;
+                        entry.Entity.UpdatedBy = currentUserId;
+                        break;
+                }
+            }
+        }
+        }
 }

@@ -1,11 +1,8 @@
 ﻿using EduGate.Domain.Entities;
-using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace Domain.Entities
 {
-    public class RefreshToken
+    public class RefreshToken : BaseAuditableEntity
     {
         public Guid Id { get; set; }
         public string Token { get; set; } = string.Empty;

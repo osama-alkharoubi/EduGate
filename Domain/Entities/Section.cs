@@ -1,6 +1,9 @@
+using Domain.Entities;
+using global::Domain.Enums;
+
 namespace EduGate.Domain.Entities;
 
-public class Section
+public class Section : BaseAuditableEntity
 {
     public Guid SectionId { get; set; }
     public Guid CourseId { get; set; }
@@ -12,7 +15,7 @@ public class Section
     public string DaysOfWeek { get; set; } = string.Empty;
     public TimeOnly StartTime { get; set; }
     public TimeOnly EndTime { get; set; }
-
+    public enSectionStatus Status { get; set; } = enSectionStatus.Open;
     public Course Course { get; set; } = null!;
     public Semester Semester { get; set; } = null!;
     public Professor Professor { get; set; } = null!;
