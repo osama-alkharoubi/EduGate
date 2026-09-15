@@ -10,7 +10,7 @@ namespace Application.Interfaces.Repositories
         Task<UniversitySetting> GetUniversitySettingsAsync(CancellationToken cancellationToken = default);
 
         // إرجاع حالة الطالب الأكاديمية (Tuple)
-        Task<(bool IsGraduating, bool HasAcademicWarning)?> GetStudentStatusAsync(Guid studentId, CancellationToken cancellationToken = default);
+        Task<(bool IsGraduating, byte HasAcademicWarning)?> GetStudentStatusAsync(Guid studentId, CancellationToken cancellationToken = default);
          Task<bool> HasUnmetPrerequisitesAsync(
    Guid studentId,
    List<Guid> sectionsToAdd,

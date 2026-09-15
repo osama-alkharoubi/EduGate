@@ -14,9 +14,10 @@ public class Student : BaseAuditableEntity
     public Guid UserId { get; set; }
     public Guid SpecializationId { get; set; }
     public bool IsGraduating { get; set; } = false;
-    public bool HasAcademicWarning { get; set; } = false;
+    public byte AcademicWarningsCount { get; set; } = 0;
     public bool HasFinancialHolding { get; set; } = false;
     public User User { get; set; } = null!;
     public Specialization Specialization { get; set; } = null!;
     public ICollection<Enrollment> Enrollments { get; set; } = new List<Enrollment>();
+    public ICollection<StudentSemester> StudentSemesters { get; set; }= new List<StudentSemester>();
 }

@@ -8,7 +8,7 @@ namespace Domain.Constants
     {
         public const string Admin = "Admin";
         public const string Registrar = "Registrar";
-        public const string Instructor = "Instructor";
+        public const string Instructor = "Professor";
         public const string Student = "Student";
     }
 }

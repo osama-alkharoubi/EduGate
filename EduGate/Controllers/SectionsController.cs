@@ -1,4 +1,5 @@
 ﻿using Application.DTOs.Section;
+using Application.Interfaces.Repositories.User;
 using Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -11,13 +12,52 @@ namespace EduGate.API.Controllers;
 public class SectionsController : ControllerBase
 {
     private readonly ISectionService _sectionService;
-
-    public SectionsController(ISectionService sectionService)
+    private readonly ICurrentUserService _currentUserService;
+    public SectionsController(ISectionService sectionService,ICurrentUserService currentUserService)
     {
         _sectionService = sectionService;
+        _currentUserService = currentUserService;
     }
+    [HttpPost]
+    [Authorize(Roles = "Admin, Registrar")]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CreateSection(
+        [FromBody] CreateSectionDto dto,
+        CancellationToken cancellationToken)
+    {
+        var sectionId = await _sectionService.CreateSectionAsync(dto, cancellationToken);
+        return CreatedAtAction(nameof(GetSectionById), new { id = sectionId }, new { SectionId = sectionId });
+    }
+    [HttpGet("{id:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetSectionById(Guid id, CancellationToken cancellationToken)
+    {
 
-    /// <summary>
+        var section = await _sectionService.GetSectionByIdAsync(id, cancellationToken);
+        if (section == null)
+            return NotFound(new { Message = $"Section with ID {id} not found." });
+
+        return Ok(section);
+    }
+    [HttpGet("available/{semesterId:guid}")]
+    [Authorize]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+ 
+    public async Task<IActionResult> GetAvailableSections(
+    [FromRoute] Guid semesterId,
+    CancellationToken cancellationToken)
+    {
+        var studentId = _currentUserService.GetClaimAsGuid("StudentId");
+
+        if (studentId == null)
+            return Forbid("User is not a valid student.");
+
+        var sections = await _sectionService.GetAvailableSectionsForStudentAsync(studentId.Value, semesterId, cancellationToken);
+        return Ok(sections);
+    }
     /// Updates an existing section.
     /// </summary>
     [HttpPut("{id:guid}")]

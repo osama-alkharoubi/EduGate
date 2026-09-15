@@ -12,4 +12,5 @@ public class Semester : BaseAuditableEntity
     public bool IsActive { get; set; }
 
     public ICollection<Section> Sections { get; set; } = new List<Section>();
+    public ICollection<StudentSemester> StudentSemesters { get; set; } = new List<StudentSemester>();
 }

@@ -26,16 +26,16 @@ namespace Infrastructure.Repositories
             return universitySettings;
         }
 
-        public async Task<(bool IsGraduating, bool HasAcademicWarning)?> GetStudentStatusAsync(Guid studentId, CancellationToken cancellationToken = default)
+        public async Task<(bool IsGraduating, byte HasAcademicWarning)?> GetStudentStatusAsync(Guid studentId, CancellationToken cancellationToken = default)
         {
             var student = await _context.Students
                 .Where(s => s.StudentId == studentId)
-                .Select(s => new { s.IsGraduating, s.HasAcademicWarning })
+                .Select(s => new { s.IsGraduating, s.AcademicWarningsCount })
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (student == null) return null;
 
-            return (student.IsGraduating, student.HasAcademicWarning);
+            return (student.IsGraduating, student.AcademicWarningsCount);
         }
 
         public async Task<int> GetTotalCreditHoursAsync(List<Guid> sectionIds, CancellationToken cancellationToken = default)

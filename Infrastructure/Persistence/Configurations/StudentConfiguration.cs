@@ -24,10 +24,7 @@ public class StudentConfiguration : IEntityTypeConfiguration<Student>
             .IsRequired()
             .HasDefaultValue(false);
 
-        builder.Property(s => s.HasAcademicWarning)
-            .IsRequired()
-            .HasDefaultValue(false);
-
+      
         builder.HasOne(s => s.User)
             .WithOne(u => u.Student)
             .HasForeignKey<Student>(s => s.UserId)

@@ -63,8 +63,13 @@ builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddScoped<ISectionService, SectionService>();
 builder.Services.AddScoped<ISectionRepository, SectionRepository>();
 builder.Services.AddScoped<IRoleClaimProvider, StudentClaimProvider>();
+builder.Services.AddScoped<IGradingService, GradingService>();
+builder.Services.AddScoped<IScheduleRepository, ScheduleRepository>();
+builder.Services.AddScoped<IScheduleService, ScheduleService>();
 builder.Services.AddScoped<IAcademicValidationService, AcademicValidationService>();
 builder.Services.AddScoped<IAcademicValidationRepository, AcademicValidationRepository>();
+builder.Services.AddScoped<IRoleClaimProvider, ProfessorClaimProvider>();
+builder.Services.AddScoped<IProfessorRepository, ProfessorRepository>();
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssembly(typeof(StudentService).Assembly);
 

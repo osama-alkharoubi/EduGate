@@ -24,29 +24,33 @@ public class EnrollmentController : ControllerBase
         _currentUserService = currentUserService;
     }
 
-    [HttpPost("{studentId}/modify")]
-    [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.Registrar},{AppRoles.Student}")]
-    public async Task<IActionResult> ModifySchedule(
-     Guid studentId,
+    [HttpPost("modify")]
+    [Authorize(Roles = AppRoles.Student)]
+    public async Task<IActionResult> ModifyMySchedule(
      [FromBody] ModifyScheduleRequestDto request,
      CancellationToken cancellationToken)
     {
-        // 1. فحص الصلاحيات العليا (المايسترو)
-        bool isSuperUser = _currentUserService.Roles.Contains(AppRoles.Admin) || _currentUserService.Roles.Contains(AppRoles.Registrar);
+        var tokenStudentId = _currentUserService.GetClaimAsGuid("StudentId");
 
-        // إذا لم يكن يملك صلاحيات إدارية، نطبق عليه قيود الطالب
-        if (!isSuperUser)
+        if (!tokenStudentId.HasValue || tokenStudentId.Value == Guid.Empty)
         {
-            var tokenStudentId = _currentUserService.GetClaimAsGuid("StudentId");
-
-            // منعه من التعديل إذا كان الـ ID في التوكن لا يطابق الـ ID في الرابط
-            if (tokenStudentId != studentId)
-            {
-                return StatusCode(403, new { Error = "Forbidden: You are not authorized to modify another student's schedule." });
-            }
+            return Unauthorized(new { Error = "Student profile not found in token." });
         }
 
-        // 2. تنفيذ العملية (الـ Middleware سيتكفل بالتقاط أي Exception وارجاعه كـ 400 أو 500)
+        await _enrollmentService.SyncStudentScheduleAsync(
+            tokenStudentId.Value,
+            request,
+            cancellationToken);
+
+        return Ok(new { Message = "Schedule modified successfully." });
+    }
+    [HttpPost("admin/{studentId:guid}/modify")]
+    [Authorize(Roles = $"{AppRoles.Admin},{AppRoles.Registrar}")]
+    public async Task<IActionResult> ModifyStudentScheduleByAdmin(
+    Guid studentId,
+    [FromBody] ModifyScheduleRequestDto request,
+    CancellationToken cancellationToken)
+    {
         await _enrollmentService.SyncStudentScheduleAsync(
             studentId,
             request,

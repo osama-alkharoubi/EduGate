@@ -55,7 +55,7 @@ public class AcademicValidationService : IAcademicValidationService
         // 2. Apply Business Logic for max allowed hours
         int maxAllowedHours = settings.MaxCreditHours;
 
-        if (studentStatus.Value.HasAcademicWarning)
+        if (studentStatus.Value.HasAcademicWarning>0)
         {
             maxAllowedHours = settings.MaxCreditHoursForWarning;
         }

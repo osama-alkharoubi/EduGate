@@ -33,13 +33,8 @@ namespace Infrastructure.Persistence
         public DbSet<Section> Sections => Set<Section>();
         public DbSet<Enrollment> Enrollments => Set<Enrollment>();
         public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
-        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        {
-            if (!optionsBuilder.IsConfigured)
-            {
-                optionsBuilder.UseNpgsql("Host=localhost; Port=5432; Database=EduGateDb; Username=postgres; Password=mysecretpassword");
-            }
-        }
+        public DbSet<StudentSemester> StudentSemesters { get; set; }
+     
     
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

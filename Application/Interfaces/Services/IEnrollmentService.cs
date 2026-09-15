@@ -11,5 +11,7 @@ namespace Application.Interfaces.Services
             Guid studentId,
             ModifyScheduleRequestDto request,
             CancellationToken cancellationToken = default);
+
+        
     }
 }

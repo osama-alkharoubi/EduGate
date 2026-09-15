@@ -84,21 +84,27 @@ public class SectionRepository : ISectionRepository
     }
 
     public async Task<IEnumerable<AvailableSectionDto>> GetAvailableSectionsForStudentAsync(
-    Guid studentId,
-    Guid semesterId,
-    CancellationToken cancellationToken = default)
+      Guid studentId,
+      Guid semesterId,
+      CancellationToken cancellationToken = default)
     {
         return await _context.Sections
-            // 1. تصفية شعب الفصل الحالي
+            .AsNoTracking()
+            // 1. تصفية شُعب الفصل الحالي
             .Where(s => s.SemesterId == semesterId)
 
-            // 2. استثناء المواد اللي ناجح فيها أو مسجلها
+            // 2. المادة ضمن خطة تخصص الطالب
+            .Where(s => _context.SpecializationCourses.Any(sc =>
+                sc.CourseId == s.CourseId &&
+                _context.Students.Any(st => st.StudentId == studentId && st.SpecializationId == sc.SpecializationId)))
+
+            // 3. استثناء المواد المسجلة حالياً أو المجتازة
             .Where(s => !_context.Enrollments.Any(e =>
                 e.StudentId == studentId &&
                 e.Section.CourseId == s.CourseId &&
-                (e.Status == enEnrollmentStatus.Completed || e.Status == enEnrollmentStatus.Enrolled)))
+                (e.Status == enEnrollmentStatus.Enrolled || e.Status == enEnrollmentStatus.Completed)))
 
-            // 3. فحص المتطلبات السابقة
+            // 4. فحص المتطلبات السابقة (صيغة كافية ومانعة بدون OR)
             .Where(s => _context.CoursePrerequisites
                 .Where(cp => cp.CourseId == s.CourseId)
                 .All(cp => _context.Enrollments.Any(e =>
@@ -106,20 +112,27 @@ public class SectionRepository : ISectionRepository
                     e.Section.CourseId == cp.PrerequisiteId &&
                     e.Status == enEnrollmentStatus.Completed)))
 
-            // 4. الـ Projection: سحب الداتا المطلوبة فقط وتشكيل الـ DTO
+            // 5. تشكيل النتيجة
             .Select(s => new AvailableSectionDto
             {
                 SectionId = s.SectionId,
-                CourseName = s.Course.CourseName, // EF Core رح يعمل JOIN لحاله
+                CourseName = s.Course.CourseName,
                 SectionNumber = s.SectionNumber,
-                ProfessorName = s.Professor.User.FirstName + " " + s.Professor.User.LastName, // EF Core رح يعمل JOIN لحاله
+                ProfessorName = s.Professor != null && s.Professor.User != null
+                    ? s.Professor.User.FirstName + " " + s.Professor.User.LastName
+                    : "TBA",
                 DaysOfWeek = s.DaysOfWeek,
                 StartTime = s.StartTime,
                 EndTime = s.EndTime,
                 Capacity = s.Capacity,
-                EnrolledCount = s.Enrollments.Count(e => e.Status == enEnrollmentStatus.Enrolled) // Sub-Query سريعة لمعرفة المسجلين
+                EnrolledCount = s.Enrollments.Count(e => e.Status == enEnrollmentStatus.Enrolled)
             })
             .ToListAsync(cancellationToken);
+    }
+    public async Task<bool> IsProfessorAssignedToSectionAsync(Guid sectionId, Guid professorId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Sections
+            .AnyAsync(s => s.SectionId == sectionId && s.ProfessorId == professorId, cancellationToken);
     }
     public  void Add(Section section)
     {

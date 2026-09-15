@@ -33,7 +33,8 @@ public interface ISectionRepository
     Task<int> GetActiveEnrollmentCountAsync(
         Guid sectionId,
         CancellationToken cancellationToken = default);
-
+    public Task<bool> IsProfessorAssignedToSectionAsync(Guid sectionId, Guid professorId, CancellationToken cancellationToken = default);
+    
     void Add(Section section);
     void Update(Section section);
     void Delete(Section section);

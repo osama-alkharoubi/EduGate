@@ -105,128 +105,131 @@ public class SpecializationRepository : ISpecializationRepository
     public async Task<StudentStudyPlanDto?> GetStudentStudyPlanAsync(Guid studentId, CancellationToken cancellationToken = default)
     {
         const string sql = """
--- الاستعلام الأول: معلومات الطالب والتخصص
-SELECT
-    u."FirstName" || ' ' || u."LastName" AS "StudentName",
-    s."UniversityNumber" AS "StudentIdNumber",
-    sp."SpecializationName",
-    sp."TotalCredits" AS "PlanTotalHours"
-FROM "Students" s
-JOIN "Users" u ON s."UserId" = u."UserId"
-JOIN "Specializations" sp ON s."SpecializationId" = sp."SpecializationId"
-WHERE s."StudentId" = @StudentId;
+        -- الاستعلام الأول: معلومات الطالب والتخصص
+        SELECT
+            u."FirstName" || ' ' || u."LastName" AS "StudentName",
+            s."UniversityNumber" AS "StudentIdNumber",
+            sp."SpecializationName",
+            sp."TotalCredits" AS "PlanTotalHours"
+        FROM "Students" s
+        JOIN "Users" u ON s."UserId" = u."UserId"
+        JOIN "Specializations" sp ON s."SpecializationId" = sp."SpecializationId"
+        WHERE s."StudentId" = @StudentId;
 
--- الاستعلام الثاني: الخطة والمواد مع تجميع أفضل/آخر تسجيل للمادة
-WITH CoursePrereqs AS (
-    SELECT
-        cp."CourseId",
-        string_agg(pr."CourseCode", ',') AS "PrerequisitesString"
-    FROM "CoursePrerequisites" cp
-    JOIN "Courses" pr ON cp."PrerequisiteId" = pr."CourseId"
-    GROUP BY cp."CourseId"
-),
-RankedEnrollments AS (
-    SELECT
-        sec."CourseId",
-        e."Grade",
-        sec."SectionId",
-        ROW_NUMBER() OVER (
-            PARTITION BY sec."CourseId"
-            ORDER BY
-                CASE WHEN e."Grade" IS NOT NULL THEN 1 ELSE 2 END, -- تفضيل المكتمل أولاً
-                e."Grade" DESC NULLS LAST -- ثم أعلى علامة
-        ) AS rn
-    FROM "Enrollments" e
-    JOIN "Sections" sec ON e."SectionId" = sec."SectionId"
-    WHERE e."StudentId" = @StudentId
-),
-StudentEnrollments AS (
-    SELECT "CourseId", "Grade", "SectionId"
-    FROM RankedEnrollments
-    WHERE rn = 1
-)
-SELECT
-    sc."RequirementType",
-    c."CourseCode",
-    c."CourseName",
-    c."CreditHours",
-    se."Grade",
-    CASE
-        WHEN se."Grade" >= 50 THEN 'Passed'
-        WHEN se."Grade" < 50 THEN 'Failed'
-        WHEN se."SectionId" IS NOT NULL AND se."Grade" IS NULL THEN 'InProgress'
-        ELSE 'NotTaken'
-    END AS "Status",
-    pr."PrerequisitesString"
-FROM "Students" st
-JOIN "SpecializationCourses" sc ON sc."SpecializationId" = st."SpecializationId"
-JOIN "Courses" c ON c."CourseId" = sc."CourseId"
-LEFT JOIN CoursePrereqs pr ON pr."CourseId" = c."CourseId"
-LEFT JOIN StudentEnrollments se ON se."CourseId" = c."CourseId"
-WHERE st."StudentId" = @StudentId
-ORDER BY sc."RequirementType", c."CourseCode";
-""";
+        -- الاستعلام الثاني: الخطة والمواد مع تجميع أفضل/آخر تسجيل للمادة
+        WITH CoursePrereqs AS (
+            SELECT
+                cp."CourseId",
+                string_agg(pr."CourseCode", ',') AS "PrerequisitesString"
+            FROM "CoursePrerequisites" cp
+            JOIN "Courses" pr ON cp."PrerequisiteId" = pr."CourseId"
+            GROUP BY cp."CourseId"
+        ),
+        RankedEnrollments AS (
+            SELECT
+                sec."CourseId",
+                e."Grade" AS "Grade",
+                sec."SectionId",
+                ROW_NUMBER() OVER (
+                    PARTITION BY sec."CourseId"
+                    ORDER BY
+                        CASE WHEN e."Grade" IS NOT NULL THEN 1 ELSE 2 END,
+                        e."Grade" DESC NULLS LAST
+                ) AS rn
+            FROM "Enrollments" e
+            JOIN "Sections" sec ON e."SectionId" = sec."SectionId"
+            WHERE e."StudentId" = @StudentId
+        ),
+        StudentEnrollments AS (
+            SELECT "CourseId", "Grade", "SectionId"
+            FROM RankedEnrollments
+            WHERE rn = 1
+        )
+        SELECT
+            sc."RequirementType",
+            c."CourseCode",
+            c."CourseName",
+            c."CreditHours",
+            se."Grade",
+            CASE
+                WHEN se."Grade" >= 50 THEN 'Passed'
+                WHEN se."Grade" < 50 THEN 'Failed'
+                WHEN se."SectionId" IS NOT NULL AND se."Grade" IS NULL THEN 'InProgress'
+                ELSE 'NotTaken'
+            END AS "Status",
+            pr."PrerequisitesString"
+        FROM "Students" st
+        JOIN "SpecializationCourses" sc ON sc."SpecializationId" = st."SpecializationId"
+        JOIN "Courses" c ON c."CourseId" = sc."CourseId"
+        LEFT JOIN CoursePrereqs pr ON pr."CourseId" = c."CourseId"
+        LEFT JOIN StudentEnrollments se ON se."CourseId" = c."CourseId"
+        WHERE st."StudentId" = @StudentId
+        ORDER BY sc."RequirementType", c."CourseCode";
+        """;
+
         var connection = Connection;
         bool shouldClose = connection.State == ConnectionState.Closed;
 
         if (shouldClose)
             await connection.OpenAsync(cancellationToken);
 
+        StudentStudyPlanDto? planDto;
+        List<FlatCourseRow> rows;
+
         try
         {
             var command = new CommandDefinition(sql, new { StudentId = studentId }, cancellationToken: cancellationToken);
-            using var multi = await connection.QueryMultipleAsync(command);
+            await using var multi = await connection.QueryMultipleAsync(command);
 
-            var planDto = await multi.ReadSingleOrDefaultAsync<StudentStudyPlanDto>();
+            planDto = await multi.ReadSingleOrDefaultAsync<StudentStudyPlanDto>();
             if (planDto == null) return null;
 
-            var rows = await multi.ReadAsync<FlatCourseRow>();
-
-            // باقي المنطق وتحويل الـ DTO لا يحتاج اتصال مفتوح...
-            int completedHours = 0;
-            var categoriesMap = new Dictionary<short, StudyPlanCategoryDto>(6);
-
-            foreach (var r in rows)
-            {
-                if (r.Status == "Passed")
-                    completedHours += r.CreditHours;
-
-                if (!categoriesMap.TryGetValue(r.RequirementType, out var category))
-                {
-                    category = new StudyPlanCategoryDto
-                    {
-                        CategoryName = ((enRequirementType)r.RequirementType).ToString(),
-                        RequiredHours = 0,
-                        Courses = new List<StudyPlanCourseItemDto>(15)
-                    };
-                    categoriesMap[r.RequirementType] = category;
-                }
-
-                category.RequiredHours += r.CreditHours;
-                category.Courses.Add(new StudyPlanCourseItemDto
-                {
-                    CourseCode = r.CourseCode,
-                    CourseName = r.CourseName,
-                    CreditHours = r.CreditHours,
-                    Grade = r.Grade,
-                    Status = r.Status,
-                    Prerequisites = string.IsNullOrEmpty(r.PrerequisitesString)
-                        ? []
-                        : r.PrerequisitesString.Split(',').ToList()
-                });
-            }
-
-            planDto.CompletedHours = completedHours;
-            planDto.Categories = categoriesMap.Values.ToList();
-
-            return planDto;
+            rows = (await multi.ReadAsync<FlatCourseRow>()).ToList();
         }
         finally
         {
-          
-            if (shouldClose && connection.State == ConnectionState.Open)
+            if (shouldClose && connection.State != ConnectionState.Closed)
                 await connection.CloseAsync();
         }
+
+        // المعالجة وحساب الساعات تتم بعد إغلاق الاتصال وتحريره لحوض الاتصالات (Connection Pool)
+        int completedHours = 0;
+        var categoriesMap = new Dictionary<short, StudyPlanCategoryDto>(6);
+
+        foreach (var r in rows)
+        {
+            if (r.Status == "Passed")
+                completedHours += r.CreditHours;
+
+            if (!categoriesMap.TryGetValue(r.RequirementType, out var category))
+            {
+                category = new StudyPlanCategoryDto
+                {
+                    CategoryName = ((enRequirementType)r.RequirementType).ToString(),
+                    RequiredHours = 0,
+                    Courses = new List<StudyPlanCourseItemDto>(15)
+                };
+                categoriesMap[r.RequirementType] = category;
+            }
+
+            category.RequiredHours += r.CreditHours;
+            category.Courses.Add(new StudyPlanCourseItemDto
+            {
+                CourseCode = r.CourseCode,
+                CourseName = r.CourseName,
+                CreditHours = r.CreditHours,
+                Grade = r.Grade,
+                Status = r.Status,
+                Prerequisites = string.IsNullOrEmpty(r.PrerequisitesString)
+                    ? []
+                    : r.PrerequisitesString.Split(',').ToList()
+            });
+        }
+
+        planDto.CompletedHours = completedHours;
+        planDto.Categories = categoriesMap.Values.ToList();
+
+        return planDto;
     }
     public async Task<IEnumerable<CourseTreeNodeDto>> GetPrerequisiteTreeAsync(Guid courseId, CancellationToken cancellationToken = default)
     {

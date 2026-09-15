@@ -27,7 +27,7 @@ public class EnrollmentService : IEnrollmentService
         ModifyScheduleRequestDto modifyScheduleRequestDto,
         CancellationToken cancellationToken = default)
     {
-     
+
         var sectionsToAdd = modifyScheduleRequestDto.SectionsToAdd ?? new List<Guid>();
         var sectionsToDrop = modifyScheduleRequestDto.SectionsToDrop ?? new List<Guid>();
 
@@ -51,7 +51,8 @@ public class EnrollmentService : IEnrollmentService
 
         // 4. فحص الحد الأدنى والأقصى للساعات على الجدول المتوقع
         await _academicValidationService.ValidateCreditHoursAsync(studentId, proposedSectionIds, cancellationToken);
-        if(_enrollmentRepository.HasBatchScheduleConflictAsync(studentId, sectionsToAdd, sectionsToDrop, cancellationToken).Result)
+        var hasConflict = await _enrollmentRepository.HasBatchScheduleConflictAsync(studentId, sectionsToAdd, sectionsToDrop, cancellationToken);
+        if (hasConflict)
         {
             throw new InvalidOperationException("There is a schedule conflict in the proposed sections.");
         }
@@ -60,3 +61,6 @@ public class EnrollmentService : IEnrollmentService
         await _enrollmentRepository.ModifyScheduleAtomicAsync(studentId, sectionsToAdd, sectionsToDrop, cancellationToken);
     }
 }
+
+   
+

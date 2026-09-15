@@ -16,8 +16,7 @@ public class EnrollmentConfiguration : IEntityTypeConfiguration<Enrollment>
             .IsRequired(false);
 
         builder.HasIndex(e => new { e.StudentId, e.SectionId })
-         .IsUnique()
-         .HasFilter("\"Status\" = 1");
+         .IsUnique();
 
         builder.Property(e => e.Status)
             .HasDefaultValue(enEnrollmentStatus.Enrolled);
