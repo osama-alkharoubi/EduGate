@@ -45,7 +45,8 @@ public class SectionService : ISectionService
             cancellationToken);
 
         if (professorHasConflict)
-            throw new InvalidOperationException("The assigned professor has a schedule conflict.");
+            throw new ConflictException(
+                 "The assigned professor has a schedule conflict with another section at this time.");
 
         // 4. حفظ الكيان
         var section = new Section
@@ -139,7 +140,7 @@ public class SectionService : ISectionService
             CourseId = section.CourseId,
             CourseName = section.Course.CourseName,
             SectionNumber = section.SectionNumber,
-            ProfessorName = $"{section.Professor.User.FirstName} {section.Professor.User.LastName}",
+            ProfessorName = $"{section.Professor?.User?.FirstName} {section.Professor?.User?.LastName}".Trim(),
             Capacity = section.Capacity,
             RoomNumber = section.RoomNumber,
             DaysOfWeek = section.DaysOfWeek,

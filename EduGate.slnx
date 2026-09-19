@@ -3,4 +3,6 @@
   <Project Path="Domain/Domain.csproj" />
   <Project Path="EduGate/EduGate.csproj" />
   <Project Path="Infrastructure/Infrastructure.csproj" />
+  <Project Path="tests/Application.UnitTests/Application.UnitTests.csproj" Id="fca9b7f1-f89f-46f0-9550-d76b908baa0f" />
+  <Project Path="tests/Domain.UnitTests/Domain.UnitTests.csproj" Id="221abd34-f09b-45a4-bf30-1229a5d9f7ff" />
 </Solution>
